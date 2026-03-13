@@ -50,6 +50,36 @@ public class Move : MonoBehaviour
     }
 
     public void ApplyBoost(float duration) => _boostTimer = duration;
+
+    // ТОТ САМЫЙ ЖЕСТКИЙ СБРОС
+    public void ResetBoost()
+    {
+        StopAllCoroutines(); // Останавливаем старые корутины, если они были
+        StartCoroutine(FullPhysicsResetRoutine());
+    }
+
+    private IEnumerator FullPhysicsResetRoutine()
+    {
+        _boostTimer = 0f;
+        _canControl = false; // На миг выключаем управление
+
+        // Цикл на 2 кадра, чтобы физика Unity точно "сдалась"
+        for (int i = 0; i < 2; i++)
+        {
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector2.zero;
+                rb.angularVelocity = 0f;
+                rb.totalForce = Vector2.zero; // Обнуляем все накопленные силы
+                rb.Sleep();
+            }
+            yield return new WaitForFixedUpdate();
+        }
+
+        _canControl = true;
+        Debug.Log("<color=green><b>[Move]</b> Полная очистка физики завершена!</color>");
+    }
+
     public void SetMovementModifiers(float speedMod, float jumpMod) => _speedModifier = speedMod;
     public void PlayBurstAnimation(float duration) => PlayShatterDeath();
     public void PlayDeathAnimation() => PlayShatterDeath();
@@ -57,24 +87,16 @@ public class Move : MonoBehaviour
     public void PlayShatterDeath()
     {
         if (childRenderer == null) return;
-
-        // Находим папку для игрока, чтобы частицы не мусорили в иерархии
         GameObject playerFolder = GameObject.Find("=== PLAYER ===");
-
         for (int i = 0; i < fragmentCount; i++)
         {
             GameObject fragObj = new GameObject("DeathFragment");
             fragObj.transform.position = transform.position;
-
-            // Если папка найдена — закидываем частицу в неё
-            if (playerFolder != null)
-                fragObj.transform.SetParent(playerFolder.transform);
-
+            if (playerFolder != null) fragObj.transform.SetParent(playerFolder.transform);
             Fragment f = fragObj.AddComponent<Fragment>();
             Vector3 randomDir = Random.insideUnitCircle.normalized;
             f.Init(childRenderer.sprite, childRenderer.color, randomDir, Random.Range(4f, 8f), Random.Range(0.8f, 1.5f), fragmentSize, false);
         }
-
         childRenderer.enabled = false;
         SetInputState(false);
         rb.simulated = false; 
@@ -102,6 +124,9 @@ public class Move : MonoBehaviour
         rb.bodyType = RigidbodyType2D.Dynamic;
         transform.localScale = Vector3.one;
         if (visualPart != null) visualPart.localScale = Vector3.one;
+
+        // ВЫЗЫВАЕМ НОВЫЙ СБРОС
+        ResetBoost();
     }
 
     void Update()
@@ -109,7 +134,6 @@ public class Move : MonoBehaviour
         if (visualPart != null && _canControl)
         {
             visualPart.localScale = Vector3.Lerp(visualPart.localScale, Vector3.one, Time.deltaTime * squashSpeed);
-            
             float targetRotation = -moveInputX * tiltAngle;
             visualPart.localRotation = Quaternion.Lerp(visualPart.localRotation, Quaternion.Euler(0,0, targetRotation), Time.deltaTime * (squashSpeed / 2));
 
@@ -124,13 +148,17 @@ public class Move : MonoBehaviour
         if (!_canControl) return;
         moveInputX = Input.GetAxisRaw("Horizontal");
         moveInputY = Input.GetAxisRaw("Vertical");
-
         if (Input.GetKeyDown(KeyCode.Space) && isGrounded) Jump();
     }
 
     void FixedUpdate()
     {
-        if (!_canControl) return;
+        // Если управление выключено (во время ресета) — просто стоим
+        if (!_canControl) 
+        {
+            rb.linearVelocity = Vector2.zero;
+            return;
+        }
 
         if (rb.linearVelocity.y > 0.1f && !Input.GetKey(KeyCode.Space) && rb.linearVelocity.y < jumpForce * 1.5f)
             rb.linearVelocity += Vector2.up * Physics2D.gravity.y * (lowJumpMultiplier - 1) * Time.fixedDeltaTime;
