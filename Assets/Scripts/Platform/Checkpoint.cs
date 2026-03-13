@@ -6,7 +6,6 @@ public class Checkpoint : MonoBehaviour
 
     private void Awake()
     {
-        // При старте игры пытаемся загрузить сохраненную точку из памяти
         if (PlayerPrefs.HasKey("CPX"))
         {
             LastCheckPointPos = new Vector3(
@@ -17,7 +16,6 @@ public class Checkpoint : MonoBehaviour
         }
         else
         {
-            // Если ключей нет в реестре — обнуляем статическую позицию
             LastCheckPointPos = Vector3.zero;
         }
     }
@@ -27,16 +25,14 @@ public class Checkpoint : MonoBehaviour
         if (other.CompareTag("Player") || other.CompareTag("PlayerRed") || 
             other.CompareTag("PlayerYellow") || other.CompareTag("PlayerGreen"))
         {
-            // Сохраняем в статическую переменную (для текущей сессии)
             LastCheckPointPos = transform.position;
 
-            // Сохраняем в PlayerPrefs (на жесткий диск)
             PlayerPrefs.SetFloat("CPX", transform.position.x);
             PlayerPrefs.SetFloat("CPY", transform.position.y);
             PlayerPrefs.SetFloat("CPZ", transform.position.z);
             PlayerPrefs.Save(); 
 
-            Debug.Log("Чекпоинт сохранен в память устройства!");
+            Debug.Log("Чекпоинт сохранен!");
         }
     }
 }
