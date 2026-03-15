@@ -7,7 +7,6 @@ public class Teleporter : MonoBehaviour
     public float teleportCooldown = 0.5f; 
     private static bool _isTeleporting = false;
 
-    // Додаємо змінну для звуку
     private AudioSource audioSource;
 
     private void Awake()
@@ -19,6 +18,7 @@ public class Teleporter : MonoBehaviour
     {
         if (_isTeleporting) return;
 
+        // Оставляем проверку тегов, как было
         if (other.CompareTag("PlayerRed") || other.CompareTag("PlayerYellow") || 
             other.CompareTag("PlayerGreen") || other.CompareTag("Player"))
         {
@@ -33,13 +33,13 @@ public class Teleporter : MonoBehaviour
     {
         _isTeleporting = true;
 
-        // ВІДТВОРЕННЯ ЗВУКУ ТЕЛЕПОРТАЦІЇ
         if (audioSource != null && audioSource.clip != null)
         {
             audioSource.PlayOneShot(audioSource.clip);
         }
 
-        player.position = exitPoint.position;
+        // Переносим игрока, фиксируя Z на 0 (стандарт для 2D)
+        player.position = new Vector3(exitPoint.position.x, exitPoint.position.y, 0f);
 
         if (Camera.main != null)
         {

@@ -49,41 +49,56 @@ public class Move : MonoBehaviour
             childRenderer = visualPart.GetComponent<SpriteRenderer>();
     }
 
+    // --- БЛОК СОВМЕСТИМОСТИ (Чтобы лазер не ругался) ---
+    public void PlayBurstAnimation(float duration) => PlayShatterDeath();
+    public void PlayDeathAnimation() => PlayShatterDeath();
+
+    public void PlayReformAnimation()
+    {
+        if (childRenderer == null) return;
+        childRenderer.enabled = false;
+        for (int i = 0; i < fragmentCount; i++)
+        {
+            GameObject fragObj = new GameObject("ReformFragment");
+            fragObj.transform.SetParent(this.transform); 
+            Fragment f = fragObj.AddComponent<Fragment>();
+            Vector3 randomDir = Random.insideUnitCircle.normalized;
+            // Последний параметр true — это режим сборки
+            f.Init(childRenderer.sprite, childRenderer.color, randomDir, Random.Range(3f, 5f), 2f, fragmentSize, true);
+        }
+    }
+
+    // --- ЛОГИКА БУСТА И СБРОСА ---
     public void ApplyBoost(float duration) => _boostTimer = duration;
 
-    // ТОТ САМЫЙ ЖЕСТКИЙ СБРОС
     public void ResetBoost()
     {
-        StopAllCoroutines(); // Останавливаем старые корутины, если они были
+        StopAllCoroutines();
         StartCoroutine(FullPhysicsResetRoutine());
     }
 
     private IEnumerator FullPhysicsResetRoutine()
     {
         _boostTimer = 0f;
-        _canControl = false; // На миг выключаем управление
+        _canControl = false; 
 
-        // Цикл на 2 кадра, чтобы физика Unity точно "сдалась"
         for (int i = 0; i < 2; i++)
         {
             if (rb != null)
             {
                 rb.linearVelocity = Vector2.zero;
                 rb.angularVelocity = 0f;
-                rb.totalForce = Vector2.zero; // Обнуляем все накопленные силы
+                rb.totalForce = Vector2.zero;
                 rb.Sleep();
             }
             yield return new WaitForFixedUpdate();
         }
 
         _canControl = true;
-        Debug.Log("<color=green><b>[Move]</b> Полная очистка физики завершена!</color>");
     }
 
     public void SetMovementModifiers(float speedMod, float jumpMod) => _speedModifier = speedMod;
-    public void PlayBurstAnimation(float duration) => PlayShatterDeath();
-    public void PlayDeathAnimation() => PlayShatterDeath();
-
+    
     public void PlayShatterDeath()
     {
         if (childRenderer == null) return;
@@ -102,20 +117,6 @@ public class Move : MonoBehaviour
         rb.simulated = false; 
     }
 
-    public void PlayReformAnimation()
-    {
-        if (childRenderer == null) return;
-        childRenderer.enabled = false;
-        for (int i = 0; i < fragmentCount; i++)
-        {
-            GameObject fragObj = new GameObject("ReformFragment");
-            fragObj.transform.SetParent(this.transform); 
-            Fragment f = fragObj.AddComponent<Fragment>();
-            Vector3 randomDir = Random.insideUnitCircle.normalized;
-            f.Init(childRenderer.sprite, childRenderer.color, randomDir, Random.Range(3f, 5f), 2f, fragmentSize, true);
-        }
-    }
-
     public void ResetVisuals()
     {
         childRenderer.enabled = true;
@@ -124,8 +125,6 @@ public class Move : MonoBehaviour
         rb.bodyType = RigidbodyType2D.Dynamic;
         transform.localScale = Vector3.one;
         if (visualPart != null) visualPart.localScale = Vector3.one;
-
-        // ВЫЗЫВАЕМ НОВЫЙ СБРОС
         ResetBoost();
     }
 
@@ -153,14 +152,9 @@ public class Move : MonoBehaviour
 
     void FixedUpdate()
     {
-        // Если управление выключено (во время ресета) — просто стоим
-        if (!_canControl) 
-        {
-            rb.linearVelocity = Vector2.zero;
-            return;
-        }
+        if (!_canControl) { rb.linearVelocity = Vector2.zero; return; }
 
-        if (rb.linearVelocity.y > 0.1f && !Input.GetKey(KeyCode.Space) && rb.linearVelocity.y < jumpForce * 1.5f)
+        if (rb.linearVelocity.y > 0.1f && !Input.GetKey(KeyCode.Space))
             rb.linearVelocity += Vector2.up * Physics2D.gravity.y * (lowJumpMultiplier - 1) * Time.fixedDeltaTime;
         else if (rb.linearVelocity.y < -0.1f)
             rb.linearVelocity += Vector2.up * Physics2D.gravity.y * (fallMultiplier - 1) * Time.fixedDeltaTime;
@@ -171,17 +165,10 @@ public class Move : MonoBehaviour
         if (Input.GetKey(KeyCode.LeftShift)) currentMaxSpeed *= 1.5f; 
         if (_boostTimer > 0) currentMaxSpeed *= 3f; 
 
-        bool isGoingTooFast = Mathf.Abs(rb.linearVelocity.x) > currentMaxSpeed;
-        bool isPushingSameDir = Mathf.Sign(rb.linearVelocity.x) == Mathf.Sign(moveInputX) && Mathf.Abs(moveInputX) > 0.01f;
-
-        if (isGoingTooFast && isPushingSameDir) { }
-        else
-        {
-            float accelRate = (Mathf.Abs(moveInputX) > 0.01f) ? accelForce : friction;
-            float targetSpeedX = moveInputX * currentMaxSpeed;
-            float speedDifX = targetSpeedX - rb.linearVelocity.x;
-            rb.AddForce(speedDifX * accelRate * Vector2.right, ForceMode2D.Force);
-        }
+        float targetSpeedX = moveInputX * currentMaxSpeed;
+        float speedDifX = targetSpeedX - rb.linearVelocity.x;
+        float accelRate = (Mathf.Abs(moveInputX) > 0.01f) ? accelForce : friction;
+        rb.AddForce(speedDifX * accelRate * Vector2.right, ForceMode2D.Force);
 
         if (Mathf.Abs(rb.gravityScale) < 0.1f) 
         {
@@ -194,15 +181,7 @@ public class Move : MonoBehaviour
     private void OnCollisionEnter2D(Collision2D collision)
     {
         foreach (ContactPoint2D contact in collision.contacts)
-        {
-            if (contact.normal.y > 0.5f)
-            {
-                if (!isGrounded && rb.linearVelocity.y < -0.5f && visualPart != null)
-                    visualPart.localScale = landScale;
-                isGrounded = true;
-                return;
-            }
-        }
+            if (contact.normal.y > 0.5f) { isGrounded = true; if (visualPart != null) visualPart.localScale = landScale; return; }
     }
 
     private void OnCollisionStay2D(Collision2D collision)
@@ -215,14 +194,10 @@ public class Move : MonoBehaviour
 
     private void Jump()
     {
-        if (rb.linearVelocity.y > jumpForce) 
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y + jumpForce / 2f);
-        else
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
-
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
         isGrounded = false;
         if (visualPart != null) visualPart.localScale = jumpScale;
-        PlayJumpSound();
+        if (audioSource != null && audioSource.clip != null) audioSource.PlayOneShot(audioSource.clip);
     }
 
     public void SetInputState(bool state) 
@@ -230,6 +205,4 @@ public class Move : MonoBehaviour
         _canControl = state; 
         if (!state) { moveInputX = 0; moveInputY = 0; rb.linearVelocity = Vector2.zero; } 
     }
-    
-    void PlayJumpSound() { if (audioSource != null && audioSource.clip != null) audioSource.PlayOneShot(audioSource.clip); }
 }
