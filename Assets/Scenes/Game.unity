@@ -13284,8 +13284,8 @@ Transform:
   m_GameObject: {fileID: 233890076}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 11.37, y: 39.86, z: 0}
-  m_LocalScale: {x: 1, y: 3, z: 1}
+  m_LocalPosition: {x: 10.89, y: 40.4, z: 0}
+  m_LocalScale: {x: 1, y: 4, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1853183472}
@@ -101404,8 +101404,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8fb4437f51e7d3f4ebe1d09664c1ae42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpeedPlatform
-  boostForce: 120
-  boostDuration: 1
+  boostForce: 130
+  boostDuration: 2
 --- !u!61 &1973932689
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -103881,9 +103881,9 @@ MonoBehaviour:
   lowJumpMultiplier: 8
   visualPart: {fileID: 222419112}
   squashSpeed: 5
-  tiltAngle: 25
-  jumpScale: {x: 0.7, y: 1.3, z: 1}
-  landScale: {x: 1.3, y: 0.7, z: 1}
+  tiltAngle: 32
+  jumpScale: {x: 0.79, y: 1.46, z: 1}
+  landScale: {x: 1.3, y: 0.85, z: 1}
   fragmentCount: 25
   fragmentSize: 0.15
 --- !u!212 &2018811152
