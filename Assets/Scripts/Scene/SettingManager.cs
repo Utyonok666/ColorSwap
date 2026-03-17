@@ -4,13 +4,15 @@ using UnityEngine.Audio;
 using TMPro;
 using System.Collections.Generic;
 
+// Manages game settings: Audio volume, Screen resolution, and Preferences saving
+// Управляет настройками игры: громкостью звука, разрешением экрана и сохранением предпочтений
 public class SettingsManager : MonoBehaviour
 {
-    [Header("Audio Settings")]
+    [Header("Audio Settings / Настройки звука")]
     public AudioMixer myMixer;
     public Slider musicSlider, sfxSlider;
 
-    [Header("Resolution Settings")]
+    [Header("Resolution Settings / Настройки разрешения")]
     public TMP_Dropdown resDropdown;
     public GameObject confirmPanel;
     public TextMeshProUGUI timerText;
@@ -20,26 +22,30 @@ public class SettingsManager : MonoBehaviour
 
     void Start()
     {
-        // Сначала настраиваем UI, потом применяем звук
+        // Setup UI first, then apply audio settings
+        // Сначала настраиваем UI, потом применяем настройки звука
         SetupResolutions();
         InitAudioSettings(); 
     }
 
-    // --- БЛОК ЗВУКА (УЛУЧШЕННЫЙ) ---
+    // --- AUDIO BLOCK / БЛОК ЗВУКА ---
 
     void InitAudioSettings()
     {
         if (myMixer == null) return;
 
-        // Загружаем значения (по умолчанию 1, т.е. 100% громкости, если сохранений нет)
+        // Load saved volumes (default to 1.0 / 100% if no save exists)
+        // Загружаем значения громкости (по умолчанию 1.0, если сохранений нет)
         float musicVal = PlayerPrefs.GetFloat("SavedMusicVol", 1f);
         float sfxVal = PlayerPrefs.GetFloat("SavedSfxVol", 1f);
 
-        // Ставим слайдеры в нужное положение
+        // Set sliders to the correct positions
+        // Устанавливаем слайдеры в нужное положение
         if (musicSlider != null) musicSlider.value = musicVal;
         if (sfxSlider != null) sfxSlider.value = sfxVal;
 
-        // Применяем звук сразу
+        // Apply audio levels immediately
+        // Применяем уровни звука сразу
         SetMusic(musicVal);
         SetSfx(sfxVal);
     }
@@ -48,8 +54,8 @@ public class SettingsManager : MonoBehaviour
     {
         if (myMixer != null)
         {
-            // Формула для плавного звука: Log10 превращает 0.0001-1.0 в -80dB-0dB
-            // Mathf.Clamp нужен, чтобы логарифм не выдал -бесконечность при 0
+            // Logarithmic formula to convert 0.0001-1.0 slider value to -80dB-0dB
+            // Логарифмическая формула для перевода значений слайдера в децибелы
             float volume = Mathf.Log10(Mathf.Clamp(sliderValue, 0.0001f, 1f)) * 20;
             
             myMixer.SetFloat("MusicVol", volume);
@@ -68,13 +74,14 @@ public class SettingsManager : MonoBehaviour
         }
     }
     
-    // Метод для кнопки "Save" (если нужна принудительная запись, хотя PlayerPrefs пишет сам при выходе)
+    // Forces PlayerPrefs to write to disk
+    // Принудительное сохранение настроек на диск
     public void SavePreferences()
     {
         PlayerPrefs.Save();
     }
 
-    // --- БЛОК ГРАФИКИ (БЕЗ ИЗМЕНЕНИЙ, ВСЁ ОК) ---
+    // --- GRAPHICS BLOCK / БЛОК ГРАФИКИ ---
 
     void SetupResolutions()
     {
@@ -86,6 +93,8 @@ public class SettingsManager : MonoBehaviour
 
         Resolution[] resolutions = Screen.resolutions;
 
+        // Populate dropdown with available screen resolutions
+        // Заполняем выпадающий список доступными разрешениями экрана
         for (int i = 0; i < resolutions.Length; i++)
         {
             string option = resolutions[i].width + "x" + resolutions[i].height;
@@ -102,6 +111,8 @@ public class SettingsManager : MonoBehaviour
         resDropdown.RefreshShownValue();
     }
 
+    // Applies selected resolution and shows confirmation dialog
+    // Применяет выбранное разрешение и показывает окно подтверждения
     public void ApplySettings()
     {
         oldRes = Screen.currentResolution;
@@ -114,6 +125,8 @@ public class SettingsManager : MonoBehaviour
         timerCoroutine = StartCoroutine(ConfirmationTimer());
     }
 
+    // Reverts resolution automatically if not confirmed within 15 seconds
+    // Автоматический возврат разрешения, если оно не подтверждено за 15 секунд
     System.Collections.IEnumerator ConfirmationTimer()
     {
         float timer = 15f;
@@ -126,6 +139,8 @@ public class SettingsManager : MonoBehaviour
         RevertResolution();
     }
 
+    // Keeps the new resolution and saves data
+    // Сохраняет новое разрешение и данные игрока
     public void ConfirmSettings()
     {
         if (timerCoroutine != null) StopCoroutine(timerCoroutine);
@@ -133,6 +148,8 @@ public class SettingsManager : MonoBehaviour
         PlayerPrefs.Save();
     }
 
+    // Reverts to the previous resolution
+    // Возвращает предыдущее разрешение экрана
     public void RevertResolution()
     {
         if (timerCoroutine != null) StopCoroutine(timerCoroutine);
